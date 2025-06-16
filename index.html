@@ -2,79 +2,108 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Station Parameter Viewer</title>
+  <title>Station + Parameter Viewer</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 </head>
 <body>
-  <h2>Select Stations (Searchable, Multi-Select)</h2>
+  <h2>Select Stations</h2>
   <select id="stationDropdown" multiple></select>
+
+  <h2>Select Parameters</h2>
+  <select id="parameterDropdown" multiple></select>
+
   <div id="plot" style="width: 100%; height: 600px; margin-top: 20px;"></div>
 
   <script>
     const csvURL = "https://raw.githubusercontent.com/DKevinM/AB_datapull/main/data/last6h.csv";
     let allData = [];
+    let choicesStations, choicesParameters;
 
     Papa.parse(csvURL, {
       download: true,
       header: true,
       complete: function(results) {
-        // Clean and filter valid data
+        // Clean data
         allData = results.data.filter(row => row.ParameterName && row.Value !== "");
 
-        // Unique stations
         const stations = [...new Set(allData.map(row => row.StationName))].sort();
+        const parameters = [...new Set(allData.map(row => row.ParameterName))].sort();
 
-        // Setup Choices.js
-        const dropdown = document.getElementById("stationDropdown");
+        // Populate station dropdown
+        const stationDropdown = document.getElementById("stationDropdown");
         stations.forEach(station => {
-          const option = document.createElement("option");
-          option.value = station;
-          option.textContent = station;
-          dropdown.appendChild(option);
+          const opt = document.createElement("option");
+          opt.value = station;
+          opt.textContent = station;
+          stationDropdown.appendChild(opt);
         });
 
-        const choices = new Choices(dropdown, {
+        // Populate parameter dropdown
+        const parameterDropdown = document.getElementById("parameterDropdown");
+        parameters.forEach(param => {
+          const opt = document.createElement("option");
+          opt.value = param;
+          opt.textContent = param;
+          parameterDropdown.appendChild(opt);
+        });
+
+        // Initialize Choices.js
+        choicesStations = new Choices(stationDropdown, {
           removeItemButton: true,
-          placeholder: true,
           placeholderValue: 'Select stations...',
           searchPlaceholderValue: 'Search stations...'
         });
+        choicesParameters = new Choices(parameterDropdown, {
+          removeItemButton: true,
+          placeholderValue: 'Select parameters...',
+          searchPlaceholderValue: 'Search parameters...'
+        });
 
-        // Initial plot with the first station
-        plotStations([stations[0]]);
-        choices.setChoiceByValue([stations[0]]); // Pre-select
+        // Preselect one station + a few parameters
+        choicesStations.setChoiceByValue([stations[0]]);
+        choicesParameters.setChoiceByValue(["Ozone", "Fine Particulate Matter"]);
 
-        // Handle selection change
-        dropdown.addEventListener("change", () => {
-          const selected = Array.from(dropdown.selectedOptions).map(opt => opt.value);
-          plotStations(selected);
+        // Plot initial
+        plotFiltered([stations[0]], ["Ozone", "Fine Particulate Matter"]);
+
+        // React to changes
+        stationDropdown.addEventListener("change", () => {
+          updatePlot();
+        });
+        parameterDropdown.addEventListener("change", () => {
+          updatePlot();
         });
       }
     });
 
-    function plotStations(stationList) {
+    function updatePlot() {
+      const selectedStations = Array.from(document.getElementById("stationDropdown").selectedOptions).map(opt => opt.value);
+      const selectedParams = Array.from(document.getElementById("parameterDropdown").selectedOptions).map(opt => opt.value);
+      plotFiltered(selectedStations, selectedParams);
+    }
+
+    function plotFiltered(stationList, paramList) {
       const traces = [];
 
       stationList.forEach(station => {
-        const stationData = allData.filter(row => row.StationName === station);
-        const parameters = [...new Set(stationData.map(r => r.ParameterName))];
-
-        parameters.forEach(param => {
-          const paramData = stationData.filter(r => r.ParameterName === param);
-          traces.push({
-            x: paramData.map(r => r.ReadingDate),
-            y: paramData.map(r => parseFloat(r.Value)),
-            mode: 'lines+markers',
-            name: `${param} (${station})`
-          });
+        paramList.forEach(param => {
+          const filtered = allData.filter(row => row.StationName === station && row.ParameterName === param);
+          if (filtered.length > 0) {
+            traces.push({
+              x: filtered.map(r => r.ReadingDate),
+              y: filtered.map(r => parseFloat(r.Value)),
+              mode: 'lines+markers',
+              name: `${param} (${station})`
+            });
+          }
         });
       });
 
       Plotly.newPlot("plot", traces, {
-        title: `Parameter Trends`,
+        title: `Parameters for Selected Stations`,
         xaxis: { title: "Time" },
         yaxis: { title: "Value" },
         margin: { t: 50 }
