@@ -88,20 +88,23 @@
           const utc = new Date(e.ReadingDate);
           e.ReadingDate = utc.toLocaleString("en-CA", { timeZone: "America/Edmonton" });
 
-          raw[e.StationName] = raw[e.StationName] || [];
-          raw[e.StationName].push(e);
+
+        raw[e.StationName] = raw[e.StationName] || [];
+        raw[e.StationName].push(e);
         });
 
-        // Organize latest reading per parameter
+
         Object.entries(raw).forEach(([station, arr]) => {
-        dataByStation[station] = {};
-        arr.forEach(e => {
-          const param = e.ParameterName;
-          dataByStation[station][param] = dataByStation[station][param] || [];
-          dataByStation[station][param].push(e);
-          recentData.push(e); // for dropdown list
+          arr.sort((a, b) => new Date(a.ReadingDate) - new Date(b.ReadingDate));
+        
+          dataByStation[station] = {};
+          arr.forEach(e => {
+            const param = e.ParameterName;
+            dataByStation[station][param] = dataByStation[station][param] || [];
+            dataByStation[station][param].push(e);
+            recentData.push(e); // for dropdown list
+          });
         });
-      });
 
         initDropdownsAndPlot();
       });
