@@ -94,17 +94,14 @@
 
         // Organize latest reading per parameter
         Object.entries(raw).forEach(([station, arr]) => {
-          arr.sort((a, b) => new Date(b.ReadingDate) - new Date(a.ReadingDate));
-          const byParam = {};
-          arr.forEach(e => {
-            const param = e.ParameterName;
-            if (!byParam[param] || new Date(e.ReadingDate) > new Date(byParam[param].ReadingDate)) {
-              byParam[param] = e;
-            }
-          });
-          dataByStation[station] = Object.values(byParam);
-          recentData.push(...dataByStation[station]);
+        dataByStation[station] = {};
+        arr.forEach(e => {
+          const param = e.ParameterName;
+          dataByStation[station][param] = dataByStation[station][param] || [];
+          dataByStation[station][param].push(e);
+          recentData.push(e); // for dropdown list
         });
+      });
 
         initDropdownsAndPlot();
       });
@@ -148,34 +145,35 @@
       plotFiltered(selectedStations, selectedParams);
     }
 
-    function plotFiltered(stationList, paramList) {
+      function plotFiltered(stationList, paramList) {
       const traces = [];
-
+    
       stationList.forEach(station => {
-        const stationData = dataByStation[station] || [];
+        const stationData = dataByStation[station] || {};
         paramList.forEach(param => {
-          const d = stationData.find(e => e.ParameterName === param);
-          if (d) {
+          const paramData = stationData[param] || [];
+    
+          if (paramData.length > 0) {
             traces.push({
-              x: [d.ReadingDate],
-              y: [d.Value],
-              mode: 'markers+text',
+              x: paramData.map(e => e.ReadingDate),
+              y: paramData.map(e => e.Value),
+              mode: 'lines+markers',
               name: `${shortLookup[param] || param} (${station})`,
-              text: [`${d.Value} ${unitsLookup[param] || ''}`],
-              textposition: 'top center',
-              marker: { size: 12 }
+              text: paramData.map(e => `${e.Value} ${e.Units}`),
+              hoverinfo: 'x+y+text'
             });
           }
         });
       });
+        
+          Plotly.newPlot("plot", traces, {
+            title: `Parameter Time Series`,
+            xaxis: { title: "Time" },
+            yaxis: { title: "Value" },
+            margin: { t: 50 }
+          });
+        }
 
-      Plotly.newPlot("plot", traces, {
-        title: `Latest Parameter Values`,
-        xaxis: { title: "Timestamp" },
-        yaxis: { title: "Value" },
-        margin: { t: 50 }
-      });
-    }
   </script>
 </body>
 </html>
