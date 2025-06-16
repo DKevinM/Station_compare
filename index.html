@@ -4,9 +4,12 @@
   <meta charset="UTF-8">
   <title>Station + Parameter Viewer</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+  <style>
+    select { width: 300px; margin-bottom: 10px; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+  </style>
 </head>
 <body>
   <h2>Select Stations</h2>
@@ -18,66 +21,126 @@
   <div id="plot" style="width: 100%; height: 600px; margin-top: 20px;"></div>
 
   <script>
-    const csvURL = "https://raw.githubusercontent.com/DKevinM/AB_datapull/main/data/last6h.csv";
-    let allData = [];
-    let choicesStations, choicesParameters;
+    let recentData = [];
+    let dataByStation = {};
+    window.dataByStation = dataByStation;
 
-    Papa.parse(csvURL, {
-      download: true,
-      header: true,
-      complete: function(results) {
-        // Clean data
-        allData = results.data.filter(row => row.ParameterName && row.Value !== "");
+    const unitsLookup = {
+      "AQHI": " ", "Ozone": "ppb", "Total Oxides of Nitrogen": "ppb",
+      "Hydrogen Sulphide": "ppb", "Total Reduced Sulphur": "ppb", "Sulphur Dioxide": "ppb",
+      "Fine Particulate Matter": "µg/m³", "Total Hydrocarbons": "ppm", "Carbon Monoxide": "ppm",
+      "Wind Direction": "degrees", "Relative Humidity": "%", "Outdoor Temperature": "°C",
+      "Nitric Oxide": "ppb", "Wind Speed": "km/hr", "Non-methane Hydrocarbons": "ppm",
+      "Nitrogen Dioxide": "ppb", "Methane": "ppm"
+    };
 
-        const stations = [...new Set(allData.map(row => row.StationName))].sort();
-        const parameters = [...new Set(allData.map(row => row.ParameterName))].sort();
+    const abbrLookup = {
+      "AQHI": "AQHI", "Ozone": "O₃", "Total Oxides of Nitrogen": "NOx",
+      "Hydrogen Sulphide": "H₂S", "Total Reduced Sulphur": "TRS", "Sulphur Dioxide": "SO₂",
+      "Fine Particulate Matter": "PM2.5", "Total Hydrocarbons": "THC", "Carbon Monoxide": "CO",
+      "Wind Direction": "wd", "Relative Humidity": "RH", "Outdoor Temperature": "ET",
+      "Nitric Oxide": "NO", "Wind Speed": "ws", "Non-methane Hydrocarbons": "NMHC",
+      "Nitrogen Dioxide": "NO₂", "Methane": "CH₄"
+    };
 
-        // Populate station dropdown
-        const stationDropdown = document.getElementById("stationDropdown");
-        stations.forEach(station => {
-          const opt = document.createElement("option");
-          opt.value = station;
-          opt.textContent = station;
-          stationDropdown.appendChild(opt);
+    const shortLookup = {
+      "AQHI": "AQHI", "Ozone": "O3", "Total Oxides of Nitrogen": "NOX",
+      "Hydrogen Sulphide": "H2S", "Total Reduced Sulphur": "TRS", "Sulphur Dioxide": "SO2",
+      "Fine Particulate Matter": "PM2.5", "Total Hydrocarbons": "THC", "Carbon Monoxide": "CO",
+      "Wind Direction": "wd", "Relative Humidity": "RH", "Outdoor Temperature": "ET",
+      "Nitric Oxide": "NO", "Wind Speed": "ws", "Non-methane Hydrocarbons": "NMHC",
+      "Nitrogen Dioxide": "NO2", "Methane": "CH4"
+    };
+
+    fetch('https://raw.githubusercontent.com/DKevinM/AB_datapull/main/data/last6h.csv')
+      .then(res => res.text())
+      .then(text => {
+        const rows = text.trim().split('\n');
+        const headers = rows.shift().split(',');
+
+        const raw = {};
+        rows.forEach(line => {
+          const cols = line.split(',');
+          const e = Object.fromEntries(headers.map((h, i) => [h, cols[i]]));
+
+          if (!e.Latitude || !e.Longitude || isNaN(e.Latitude) || isNaN(e.Longitude)) return;
+
+          e.ParameterName = e.ParameterName || "AQHI";
+          e.Units = unitsLookup[e.ParameterName] || "";
+          e.Abbreviation = abbrLookup[e.ParameterName] || "";
+          e.Shortform = shortLookup[e.ParameterName] || "";
+
+          let v = parseFloat(e.Value);
+
+          // Convert ppm → ppb if needed
+          const ppmParams = [
+            "Ozone", "Total Oxides of Nitrogen", "Hydrogen Sulphide",
+            "Total Reduced Sulphur", "Sulphur Dioxide", "Nitric Oxide", "Nitrogen Dioxide"
+          ];
+          if (ppmParams.includes(e.ParameterName)) {
+            v *= 1000;
+          }
+
+          if (isNaN(v)) return;
+          e.Value = v;
+
+          // Convert timestamp to Edmonton local time
+          const utc = new Date(e.ReadingDate);
+          e.ReadingDate = utc.toLocaleString("en-CA", { timeZone: "America/Edmonton" });
+
+          raw[e.StationName] = raw[e.StationName] || [];
+          raw[e.StationName].push(e);
         });
 
-        // Populate parameter dropdown
-        const parameterDropdown = document.getElementById("parameterDropdown");
-        parameters.forEach(param => {
-          const opt = document.createElement("option");
-          opt.value = param;
-          opt.textContent = param;
-          parameterDropdown.appendChild(opt);
+        // Organize latest reading per parameter
+        Object.entries(raw).forEach(([station, arr]) => {
+          arr.sort((a, b) => new Date(b.ReadingDate) - new Date(a.ReadingDate));
+          const byParam = {};
+          arr.forEach(e => {
+            const param = e.ParameterName;
+            if (!byParam[param] || new Date(e.ReadingDate) > new Date(byParam[param].ReadingDate)) {
+              byParam[param] = e;
+            }
+          });
+          dataByStation[station] = Object.values(byParam);
+          recentData.push(...dataByStation[station]);
         });
 
-        // Initialize Choices.js
-        choicesStations = new Choices(stationDropdown, {
-          removeItemButton: true,
-          placeholderValue: 'Select stations...',
-          searchPlaceholderValue: 'Search stations...'
-        });
-        choicesParameters = new Choices(parameterDropdown, {
-          removeItemButton: true,
-          placeholderValue: 'Select parameters...',
-          searchPlaceholderValue: 'Search parameters...'
-        });
+        initDropdownsAndPlot();
+      });
 
-        // Preselect one station + a few parameters
-        choicesStations.setChoiceByValue([stations[0]]);
-        choicesParameters.setChoiceByValue(["Ozone", "Fine Particulate Matter"]);
+    function initDropdownsAndPlot() {
+      const stations = Object.keys(dataByStation).sort();
+      const parameters = [...new Set(recentData.map(e => e.ParameterName))].sort();
 
-        // Plot initial
-        plotFiltered([stations[0]], ["Ozone", "Fine Particulate Matter"]);
+      const stationDropdown = document.getElementById("stationDropdown");
+      stations.forEach(station => {
+        const opt = document.createElement("option");
+        opt.value = station;
+        opt.textContent = station;
+        stationDropdown.appendChild(opt);
+      });
 
-        // React to changes
-        stationDropdown.addEventListener("change", () => {
-          updatePlot();
-        });
-        parameterDropdown.addEventListener("change", () => {
-          updatePlot();
-        });
-      }
-    });
+      const parameterDropdown = document.getElementById("parameterDropdown");
+      parameters.forEach(param => {
+        const opt = document.createElement("option");
+        opt.value = param;
+        opt.textContent = param;
+        parameterDropdown.appendChild(opt);
+      });
+
+      const stationChoices = new Choices(stationDropdown, { removeItemButton: true });
+      const paramChoices = new Choices(parameterDropdown, { removeItemButton: true });
+
+      // Default selections
+      stationChoices.setChoiceByValue([stations[0]]);
+      paramChoices.setChoiceByValue(["Ozone", "Fine Particulate Matter"]);
+
+      plotFiltered([stations[0]], ["Ozone", "Fine Particulate Matter"]);
+
+      stationDropdown.addEventListener("change", () => updatePlot());
+      parameterDropdown.addEventListener("change", () => updatePlot());
+    }
 
     function updatePlot() {
       const selectedStations = Array.from(document.getElementById("stationDropdown").selectedOptions).map(opt => opt.value);
@@ -89,22 +152,26 @@
       const traces = [];
 
       stationList.forEach(station => {
+        const stationData = dataByStation[station] || [];
         paramList.forEach(param => {
-          const filtered = allData.filter(row => row.StationName === station && row.ParameterName === param);
-          if (filtered.length > 0) {
+          const d = stationData.find(e => e.ParameterName === param);
+          if (d) {
             traces.push({
-              x: filtered.map(r => r.ReadingDate),
-              y: filtered.map(r => parseFloat(r.Value)),
-              mode: 'lines+markers',
-              name: `${param} (${station})`
+              x: [d.ReadingDate],
+              y: [d.Value],
+              mode: 'markers+text',
+              name: `${shortLookup[param] || param} (${station})`,
+              text: [`${d.Value} ${unitsLookup[param] || ''}`],
+              textposition: 'top center',
+              marker: { size: 12 }
             });
           }
         });
       });
 
       Plotly.newPlot("plot", traces, {
-        title: `Parameters for Selected Stations`,
-        xaxis: { title: "Time" },
+        title: `Latest Parameter Values`,
+        xaxis: { title: "Timestamp" },
         yaxis: { title: "Value" },
         margin: { t: 50 }
       });
