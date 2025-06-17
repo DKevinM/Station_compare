@@ -174,17 +174,20 @@
                   hoverinfo: 'x+y+text'
                 });
               }
-            });
+          });
       });
         
-          Plotly.newPlot("plot", traces, {
-            title: `Parameter Time Series`,
-            xaxis: { title: "Time" },
-            yaxis: { title: "Value" },
-            margin: { t: 50 }
-          });
-        }
-
+        Plotly.newPlot("plot", traces, {
+          title: `Parameter Time Series`,
+          xaxis: {
+            title: "Time",
+            tickformat: "%Y-%m-%d %H:%M"
+          },
+          yaxis: { title: "Value" },
+          margin: { t: 50 }
+        });
+      }
+    
   </script>
 </body>
 </html>
