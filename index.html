@@ -142,9 +142,9 @@
 
       // Default selections
       stationChoices.setChoiceByValue([stations[0]]);
-      paramChoices.setChoiceByValue(["Ozone", "Fine Particulate Matter"]);
+      paramChoices.setChoiceByValue(["Fine Particulate Matter"]);
 
-      plotFiltered([stations[0]], ["Ozone", "Fine Particulate Matter"]);
+      plotFiltered([stations[0]], ["Fine Particulate Matter"]);
 
       stationDropdown.addEventListener("change", () => updatePlot());
       parameterDropdown.addEventListener("change", () => updatePlot());
@@ -175,8 +175,6 @@
                 });
               }
             });
-          }
-        });
       });
         
           Plotly.newPlot("plot", traces, {
