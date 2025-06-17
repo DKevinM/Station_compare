@@ -164,15 +164,16 @@
         paramList.forEach(param => {
           const paramData = stationData[param] || [];
     
-          if (paramData.length > 0) {
-              traces.push({
-                x: paramData.map(e => e.ReadingDate),
-                y: paramData.map(e => e.Value),
-                mode: 'lines+markers',
-                name: `${shortLookup[param] || param} (${station})`,
-                text: paramData.map(e => `${e.StationName}: ${e.Value} ${e.Units}`),
-                hoverinfo: 'x+y+text'
-              });
+              if (paramData.length > 0) {
+                traces.push({
+                  x: paramData.map(e => e.ReadingDate),
+                  y: paramData.map(e => e.Value),
+                  mode: 'lines+markers',
+                  name: `${shortLookup[param] || param} (${station})`,
+                  text: paramData.map(e => `${e.StationName}: ${e.Value} ${e.Units}`),
+                  hoverinfo: 'x+y+text'
+                });
+              }
             });
           }
         });
