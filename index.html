@@ -85,16 +85,22 @@
           e.Value = v;
 
           // Convert timestamp to Edmonton local time
-          // Parse timestamp and store raw date for sorting
-          const rawUTC = new Date(e.ReadingDate);
-          e.RawDate = new Date(rawUTC.toLocaleString("en-US", { timeZone: "America/Edmonton" }));
-          e.ReadingDate = e.RawDate.toLocaleString("en-CA", {
-            timeZone: "America/Edmonton",
-            year: "numeric", month: "2-digit", day: "2-digit",
-            hour: "2-digit", minute: "2-digit", second: "2-digit",
-            hour12: false
-          });
-
+        const rawUTC = new Date(e.ReadingDate);
+  
+        // Use rawUTC directly for logic
+        e.RawDate = rawUTC;
+        
+        // Format for Mountain time (MST/MDT depending on date)
+        e.ReadingDate = rawUTC.toLocaleString("en-CA", {
+          timeZone: "America/Edmonton",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false
+        });
 
 
         raw[e.StationName] = raw[e.StationName] || [];
@@ -142,9 +148,9 @@
 
       // Default selections
       stationChoices.setChoiceByValue([stations[0]]);
-      paramChoices.setChoiceByValue(["Fine Particulate Matter"]);
+      paramChoices.setChoiceByValue(["Wind Direction"]);
 
-      plotFiltered([stations[0]], ["Fine Particulate Matter"]);
+      plotFiltered(["Edmonton East", "Edmonton McCauley", "Edmonton Lendrum", "Woodcroft", "O’Morrow Station 1", "Poacher’s Landing Station 2"], ["Wind Direction"]);
 
       stationDropdown.addEventListener("change", () => updatePlot());
       parameterDropdown.addEventListener("change", () => updatePlot());
