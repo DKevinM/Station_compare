@@ -84,8 +84,13 @@
           if (isNaN(v)) return;
           e.Value = v;
 
-          // Convert timestamp to Edmonton local time
-        const rawUTC = new Date(e.ReadingDate);
+          try {
+            // Parse ReadingDate safely
+            const rawUTC = new Date(Date.parse(e.ReadingDate));
+            if (isNaN(rawUTC)) {
+              console.warn("Invalid timestamp", e.ReadingDate, e.ParameterName, e.StationName);
+              return;  // Skip bad entries
+            }
   
         // Use rawUTC directly for logic
         e.RawDate = rawUTC;
@@ -101,7 +106,10 @@
           second: "2-digit",
           hour12: false
         });
-
+        } catch (err) {
+          console.warn("Parsing error for", e.ReadingDate);
+          return;
+        }
 
         raw[e.StationName] = raw[e.StationName] || [];
         raw[e.StationName].push(e);
