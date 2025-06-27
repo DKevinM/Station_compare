@@ -52,7 +52,7 @@
       "Nitrogen Dioxide": "NO2", "Methane": "CH4"
     };
 
-    fetch('https://raw.githubusercontent.com/DKevinM/AB_datapull/main/data/last6h.csv')
+    fetch('https://raw.githubusercontent.com/DKevinM/AB_datapull/main/data/last30d.csv')
       .then(res => res.text())
       .then(text => {
         const rows = text.trim().split('\n');
