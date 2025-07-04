@@ -52,84 +52,44 @@
       "Nitrogen Dioxide": "NO2", "Methane": "CH4"
     };
 
-    fetch('https://raw.githubusercontent.com/DKevinM/AB_datapull/main/data/last30d.csv')
-      .then(res => res.text())
-      .then(text => {
-        const rows = text.trim().split('\n');
-        const headers = rows.shift().split(',');
-
-        const raw = {};
-        rows.forEach(line => {
-          const cols = line.split(',');
-          const e = Object.fromEntries(headers.map((h, i) => [h, cols[i]]));
-
-          if (!e.Latitude || !e.Longitude || isNaN(e.Latitude) || isNaN(e.Longitude)) return;
-
+    fetch('https://aqhi-api.onrender.com/data')
+      .then(res => res.json())
+      .then(data => {
+        data.forEach(e => {
           e.ParameterName = e.ParameterName || "AQHI";
           e.Units = unitsLookup[e.ParameterName] || "";
           e.Abbreviation = abbrLookup[e.ParameterName] || "";
           e.Shortform = shortLookup[e.ParameterName] || "";
-
-          let v = parseFloat(e.Value);
-
-          // Convert ppm → ppb if needed
-          const ppmParams = [
-            "Ozone", "Total Oxides of Nitrogen", "Hydrogen Sulphide",
-            "Total Reduced Sulphur", "Sulphur Dioxide", "Nitric Oxide", "Nitrogen Dioxide"
-          ];
-          if (ppmParams.includes(e.ParameterName)) {
-            v *= 1000;
-          }
-
+    
           if (isNaN(v)) return;
           e.Value = v;
-
-          try {
-            // Parse ReadingDate safely
-            const rawUTC = new Date(Date.parse(e.ReadingDate));
-            if (isNaN(rawUTC)) {
-              console.warn("Invalid timestamp", e.ReadingDate, e.ParameterName, e.StationName);
-              return;  // Skip bad entries
-            }
-  
-        // Use rawUTC directly for logic
-        e.RawDate = rawUTC;
-        
-        // Format for Mountain time (MST/MDT depending on date)
-        e.ReadingDate = rawUTC.toLocaleString("en-CA", {
-          timeZone: "America/Edmonton",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false
-        });
-        } catch (err) {
-          console.warn("Parsing error for", e.ReadingDate);
-          return;
-        }
-
-        raw[e.StationName] = raw[e.StationName] || [];
-        raw[e.StationName].push(e);
-        });
-
-
-        Object.entries(raw).forEach(([station, arr]) => {
-          arr.sort((a, b) => a.RawDate - b.RawDate);
-        
-          dataByStation[station] = {};
-          arr.forEach(e => {
-            const param = e.ParameterName;
-            dataByStation[station][param] = dataByStation[station][param] || [];
-            dataByStation[station][param].push(e);
-            recentData.push(e); // for dropdown list
+      
+          const rawUTC = new Date(Date.parse(e.ReadingDate));
+          if (isNaN(rawUTC)) return;
+      
+          e.RawDate = rawUTC;
+          e.ReadingDate = rawUTC.toLocaleString("en-CA", {
+            timeZone: "America/Edmonton",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false
           });
-        });
 
-        initDropdownsAndPlot();
+        // Add to structure
+        if (!dataByStation[e.StationName]) dataByStation[e.StationName] = {};
+        if (!dataByStation[e.StationName][e.ParameterName]) dataByStation[e.StationName][e.ParameterName] = [];
+    
+        dataByStation[e.StationName][e.ParameterName].push(e);
+        recentData.push(e);
       });
+    
+      initDropdownsAndPlot();
+    });
+
 
     function initDropdownsAndPlot() {
       const stations = Object.keys(dataByStation).sort();
