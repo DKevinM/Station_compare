@@ -61,7 +61,7 @@
           e.Abbreviation = abbrLookup[e.ParameterName] || "";
           e.Shortform = shortLookup[e.ParameterName] || "";
         
-          let v = parseFloat(e.Value);  // ✅ Add this line back
+          let v = parseFloat(e.Value);
           if (isNaN(v)) return;
           e.Value = v;
           
@@ -87,11 +87,10 @@
         dataByStation[e.StationName][e.ParameterName].push(e);
         recentData.push(e);
       });
-    
       initDropdownsAndPlot();
     });
 
-
+    
     function initDropdownsAndPlot() {
       const stations = Object.keys(dataByStation).sort();
       const parameters = [...new Set(recentData.map(e => e.ParameterName))].sort();
