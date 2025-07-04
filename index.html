@@ -60,10 +60,11 @@
           e.Units = unitsLookup[e.ParameterName] || "";
           e.Abbreviation = abbrLookup[e.ParameterName] || "";
           e.Shortform = shortLookup[e.ParameterName] || "";
-    
+        
+          let v = parseFloat(e.Value);  // ✅ Add this line back
           if (isNaN(v)) return;
           e.Value = v;
-      
+          
           const rawUTC = new Date(Date.parse(e.ReadingDate));
           if (isNaN(rawUTC)) return;
       
