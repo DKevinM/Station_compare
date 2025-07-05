@@ -56,20 +56,22 @@
     // Compute default date range (last 7 days)
     const end = new Date();
     const start = new Date();
-    start.setDate(end.getDate() - 7);
+    start.setDate(end.getDate() - 14);
     
     // Format as YYYY-MM-DD
-    const formatDate = d => d.toISOString().split('T')[0];
-    const startDateStr = formatDate(start);
-    const endDateStr = formatDate(end);
+    const startDateStr = start.toISOString();
+    const endDateStr = end.toISOString();
     
     // Query Supabase with dynamic range
+    const startDateStr = start.toISOString().split('T')[0] + "T00:00:00Z";
+    const endDateStr = end.toISOString().split('T')[0] + "T23:59:59Z";
+    
     const { data, error } = await supabase
       .from('aqhi_data')
       .select('*')
       .gte('ReadingDate', startDateStr)
       .lte('ReadingDate', endDateStr);
-
+    
 
     if (error) {
       console.error("Error fetching data:", error);
