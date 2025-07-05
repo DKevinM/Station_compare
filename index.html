@@ -113,6 +113,9 @@
 
       const stationChoices = new Choices(stationDropdown, { removeItemButton: true });
       const paramChoices = new Choices(parameterDropdown, { removeItemButton: true });
+      <h2>Select Date Range</h2>
+      <label>Start Date: <input type="date" id="startDate" value="2025-01-01"></label>
+      <label>End Date: <input type="date" id="endDate" value="2025-12-31"></label>
 
       // Default selections
       stationChoices.setChoiceByValue(["Edmonton East", "Edmonton McCauley", "Edmonton Lendrum", "Woodcroft", "O’Morrow Station 1", "Poacher’s Landing Station 2"]);
@@ -124,33 +127,39 @@
       parameterDropdown.addEventListener("change", () => updatePlot());
     }
 
-    function updatePlot() {
-      const selectedStations = Array.from(document.getElementById("stationDropdown").selectedOptions).map(opt => opt.value);
-      const selectedParams = Array.from(document.getElementById("parameterDropdown").selectedOptions).map(opt => opt.value);
-      plotFiltered(selectedStations, selectedParams);
-    }
+      function updatePlot() {
+        const selectedStations = Array.from(document.getElementById("stationDropdown").selectedOptions).map(opt => opt.value);
+        const selectedParams = Array.from(document.getElementById("parameterDropdown").selectedOptions).map(opt => opt.value);
+        const startDate = new Date(document.getElementById("startDate").value);
+        const endDate = new Date(document.getElementById("endDate").value);
+        plotFiltered(selectedStations, selectedParams, startDate, endDate);
+      }
 
-      function plotFiltered(stationList, paramList) {
-      const traces = [];
-    
-      stationList.forEach(station => {
-        const stationData = dataByStation[station] || {};
-        paramList.forEach(param => {
-          const paramData = stationData[param] || [];
-    
-              if (paramData.length > 0) {
-                traces.push({
-                  x: paramData.map(e => e.ReadingDate),
-                  y: paramData.map(e => e.Value),
-                  mode: 'lines+markers',
-                  name: `${shortLookup[param] || param} (${station})`,
-                  text: paramData.map(e => `${e.StationName}: ${e.Value} ${e.Units}`),
-                  hoverinfo: 'x+y+text'
-                });
-              }
+      function plotFiltered(stationList, paramList, startDate, endDate) {
+        const traces = [];
+      
+        stationList.forEach(station => {
+          const stationData = dataByStation[station] || {};
+          paramList.forEach(param => {
+            const paramData = stationData[param] || [];
+      
+            const filtered = paramData.filter(e => {
+              return e.RawDate >= startDate && e.RawDate <= endDate;
+            });
+      
+            if (filtered.length > 0) {
+              traces.push({
+                x: filtered.map(e => e.ReadingDate),
+                y: filtered.map(e => e.Value),
+                mode: 'lines+markers',
+                name: `${shortLookup[param] || param} (${station})`,
+                text: filtered.map(e => `${e.StationName}: ${e.Value} ${e.Units}`),
+                hoverinfo: 'x+y+text'
+              });
+            }
           });
-      });
-        
+        });
+      
         Plotly.newPlot("plot", traces, {
           title: "Parameter Time Series",
           xaxis: {
@@ -159,9 +168,10 @@
           },
           yaxis: { title: "Value" },
           margin: { t: 50 },
-          hovermode: "x unified" 
+          hovermode: "x unified"
         });
       }
+
     
   </script>
 </body>
