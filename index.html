@@ -68,10 +68,10 @@
     } else {
       const end = new Date(latest[0].ReadingDate);
       const start = new Date(end);
-      start.setDate(end.getDate() - 1);  
+      start.setDate(end.getDate() - 2);  
   
-      startDateStr = start.toISOString();
-      endDateStr = end.toISOString();
+      startDateStr = start.toISOString().split("T")[0];
+      endDateStr = end.toISOString().split("T")[0];
     
       const { data, error } = await supabase
         .from('aqhi_data')
@@ -172,11 +172,14 @@
     function updatePlot() {
       const selectedStations = Array.from(document.getElementById("stationDropdown").selectedOptions).map(opt => opt.value);
       const selectedParams = Array.from(document.getElementById("parameterDropdown").selectedOptions).map(opt => opt.value);
-      const startDate = new Date(document.getElementById("startDate").value);
-      const endDate = new Date(document.getElementById("endDate").value);
+      const startDate = new Date(startDateInput);
+      const endDate = new Date(endDateInput);
+      if (isNaN(startDate) || isNaN(endDate)) {
+        console.error("Invalid start or end date.");
+        return;
+      }
       plotFiltered(selectedStations, selectedParams, startDate, endDate);
       console.log("Start:", startDate.toISOString(), "End:", endDate.toISOString());
-
     }
 
     function plotFiltered(stationList, paramList, startDate, endDate) {
