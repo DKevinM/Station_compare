@@ -67,6 +67,16 @@
       .select('*')
       .gte('ReadingDate', startDateStr)
       .lte('ReadingDate', endDateStr);
+
+
+    
+    console.log("Supabase query result:", data);
+    if (error) {
+      console.error("Error fetching data from Supabase:", error.message, error);
+      console.log("Using date range:", startDateStr, "to", endDateStr);
+    }
+
+
     
 
     if (error) {
