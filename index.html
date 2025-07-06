@@ -98,10 +98,11 @@
         if (isNaN(v)) return;
         e.Value = v;
 
-      const rawUTC = new Date(e.ReadingDate);
-      if (isNaN(rawUTC)) return;
+        
+      const rawUTC = new Date(e.ReadingDate.replace(",", "T"));
+
       
-      e.RawDate = rawUTC; 
+      e.RawDate = new Date(rawUTC.getTime()); 
       
       e.DisplayDate = rawUTC.toLocaleString("en-CA", {
         timeZone: "America/Edmonton",
@@ -114,6 +115,8 @@
 
         if (!dataByStation[e.StationName]) dataByStation[e.StationName] = {};
         if (!dataByStation[e.StationName][e.ParameterName]) dataByStation[e.StationName][e.ParameterName] = [];
+
+        console.log("StationName:", e.StationName);
 
         dataByStation[e.StationName][e.ParameterName].push(e);
         recentData.push(e);
@@ -166,10 +169,16 @@
       const startDate = new Date(document.getElementById("startDate").value);
       const endDate = new Date(document.getElementById("endDate").value);
       plotFiltered(selectedStations, selectedParams, startDate, endDate);
+      console.log("Start:", startDate.toISOString(), "End:", endDate.toISOString());
+
     }
 
     function plotFiltered(stationList, paramList, startDate, endDate) {
       const traces = [];
+      console.log("Filtering with", stationList, paramList);
+      console.log("All data count:", paramData.length);
+      console.log("Filtered count:", filtered.length);
+
 
       stationList.forEach(station => {
         const stationData = dataByStation[station] || {};
