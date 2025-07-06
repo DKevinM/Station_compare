@@ -98,16 +98,19 @@
         if (isNaN(v)) return;
         e.Value = v;
 
-        const rawUTC = new Date(e.ReadingDate);
-        if (isNaN(rawUTC)) return;
-        e.RawDate = rawUTC;
-
-        e.ReadingDate = rawUTC.toLocaleString("en-CA", {
-          timeZone: "America/Edmonton",
-          year: "numeric", month: "2-digit", day: "2-digit",
-          hour: "2-digit", minute: "2-digit", second: "2-digit",
-          hour12: false
-        });
+      const rawUTC = new Date(e.ReadingDate);
+      if (isNaN(rawUTC)) return;
+      
+      e.RawDate = rawUTC; 
+      
+      e.DisplayDate = rawUTC.toLocaleString("en-CA", {
+        timeZone: "America/Edmonton",
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit",
+        hour12: false
+      });
+      
+      e.ReadingDate = rawUTC.toISOString();
 
         if (!dataByStation[e.StationName]) dataByStation[e.StationName] = {};
         if (!dataByStation[e.StationName][e.ParameterName]) dataByStation[e.StationName][e.ParameterName] = [];
@@ -177,11 +180,11 @@
 
           if (filtered.length > 0) {
             traces.push({
-              x: filtered.map(e => e.ReadingDate),
+              x: filtered.map(e => e.RawDate),
               y: filtered.map(e => e.Value),
               mode: 'lines+markers',
               name: `${shortLookup[param] || param} (${station})`,
-              text: filtered.map(e => `${e.StationName}: ${e.Value} ${e.Units}`),
+              text: filtered.map(e => `${e.StationName}: ${e.Value} ${e.Units} @ ${e.DisplayDate}`),
               hoverinfo: 'x+y+text'
             });
           }
