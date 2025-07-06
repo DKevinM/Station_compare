@@ -31,7 +31,9 @@
     const SUPABASE_URL= 'https://zcunoncbyitfsilrhymv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjdW5vbmNieWl0ZnNpbHJoeW12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3Mjk3NDYsImV4cCI6MjA2NzMwNTc0Nn0._z_tqm_5UIBkWfMa7HAJrUOA-0t9vOaBVV48-74esWQ';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+    let recentData = [];
+    let dataByStation = {};
+    
     const unitsLookup = {
       "AQHI": " ", "Ozone": "ppb", "Total Oxides of Nitrogen": "ppb",
       "Hydrogen Sulphide": "ppb", "Total Reduced Sulphur": "ppb", "Sulphur Dioxide": "ppb",
@@ -50,10 +52,9 @@
       "Nitrogen Dioxide": "NO2", "Methane": "CH4"
     };
 
-    let recentData = [];
-    let dataByStation = {};
 
-    
+
+  (async () => {
     const { data: latest, error: latestErr } = await supabase
       .from('aqhi_data')
       .select('ReadingDate')
@@ -62,6 +63,7 @@
 
     if (latestErr || !latest || latest.length === 0) {
       console.error("Failed to get latest ReadingDate:", latestErr);
+      return;
     } else {
       const end = new Date(latest[0].ReadingDate);
       const start = new Date(end);
@@ -78,6 +80,11 @@
         .order('ReadingDate', { ascending: true })
         .range(0, 9999);
 
+      if (!data || data.length === 0) {
+        console.warn("No data returned for given range.");
+        return; 
+      }
+      
       window.__aqhi_data = data;
     
       console.log("Supabase query result:", data);
@@ -86,10 +93,6 @@
         console.log("Using date range:", startDateStr, "to", endDateStr);
       }
 
-      if (!data || data.length === 0) {
-        console.warn("No data returned for given range.");
-        return;
-      }
 
       data.forEach(e => {
         e.ParameterName = e.ParameterName || "AQHI";
