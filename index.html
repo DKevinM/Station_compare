@@ -181,10 +181,6 @@
 
     function plotFiltered(stationList, paramList, startDate, endDate) {
       const traces = [];
-      console.log("Filtering with", stationList, paramList);
-      console.log("All data count:", paramData.length);
-      console.log("Filtered count:", filtered.length);
-
 
       stationList.forEach(station => {
         const stationData = dataByStation[station] || {};
