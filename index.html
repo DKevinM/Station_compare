@@ -75,7 +75,7 @@
       .gte('ReadingDate', startDateStr)
       .lte('ReadingDate', endDateStr);
 
-
+    window.__aqhi_data = data;
     
     console.log("Supabase query result:", data);
     if (error) {
