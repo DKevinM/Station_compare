@@ -50,13 +50,20 @@
       "Nitrogen Dioxide": "NO2", "Methane": "CH4"
     };
 
+    const { data: latest, error: latestErr } = await supabase
+      .from('aqhi_data')
+      .select('ReadingDate')
+      .order('ReadingDate', { ascending: false })
+      .limit(1);
+
+
     let recentData = [];
     let dataByStation = {};
 
     // Compute default date range (last 7 days)
     const end = new Date();
     const start = new Date();
-    start.setDate(end.getDate() - 14);
+    start.setDate(end.getDate() - 1);
       
     // Query Supabase with dynamic range
     const startDateStr = start.toISOString().split('T')[0] + "T00:00:00Z";
@@ -183,7 +190,7 @@
 
       Plotly.newPlot("plot", traces, {
         title: "Parameter Time Series",
-        xaxis: { title: "Time", tickformat: "%Y-%m-%d %H:%M" },
+        xaxis: { title: "Time", tickformat: "%Y-%m-%d %H:%M", type: "date" },
         yaxis: { title: "Value" },
         margin: { t: 50 },
         hovermode: "x unified"
