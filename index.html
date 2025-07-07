@@ -113,8 +113,6 @@
     const stationChoices = new Choices(stationDropdown, { removeItemButton: true });
     const paramChoices = new Choices(parameterDropdown, { removeItemButton: true });
 
-    document.getElementById("startDate").valueAsDate = new Date(new Date().setDate(new Date().getDate() - 2));
-    document.getElementById("endDate").valueAsDate = new Date();
 
     stationChoices.setChoiceByValue(["Edmonton East", "St. Albert", "Woodcroft", "Edmonton Lendrum", "Edmonton McCauley"]);
     paramChoices.setChoiceByValue(["Wind Direction"]);
@@ -185,8 +183,6 @@
 
     stationDropdown.addEventListener("change", fetchAndPlot);
     parameterDropdown.addEventListener("change", fetchAndPlot);
-    document.getElementById("startDate").addEventListener("change", fetchAndPlot);
-    document.getElementById("endDate").addEventListener("change", fetchAndPlot);
 
     fetchAndPlot(); // Initial plot
   </script>
