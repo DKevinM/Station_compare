@@ -48,8 +48,18 @@
       "Nitrogen Dioxide": "NO2", "Methane": "CH4"
     };
 
-    const stations = ["Edmonton East", "St. Albert", "Woodcroft"];
-    const parameters = Object.keys(unitsLookup);
+    const { data: stationData, error: stationErr } = await supabase
+      .from("aqhi_data")
+      .select("StationName")
+      .neq("StationName", "")
+      .limit(10000);
+    const stations = [...new Set(stationData.map(d => d.StationName))].sort();
+    const { data: paramData, error: paramErr } = await supabase
+      .from("aqhi_data")
+      .select("ParameterName")
+      .neq("ParameterName", "")
+      .limit(10000);
+    const parameters = [...new Set(paramData.map(d => d.ParameterName))].sort();
 
     const stationDropdown = document.getElementById("stationDropdown");
     const parameterDropdown = document.getElementById("parameterDropdown");
@@ -71,11 +81,12 @@
     const stationChoices = new Choices(stationDropdown, { removeItemButton: true });
     const paramChoices = new Choices(parameterDropdown, { removeItemButton: true });
 
-    document.getElementById("startDate").valueAsDate = new Date(new Date().setDate(new Date().getDate() - 7));
+    document.getElementById("startDate").valueAsDate = new Date(new Date().setDate(new Date().getDate() - 2));
     document.getElementById("endDate").valueAsDate = new Date();
 
-    stationChoices.setChoiceByValue(["Edmonton East"]);
-    paramChoices.setChoiceByValue(["Ozone"]);
+    stationChoices.setChoiceByValue(["Edmonton East", "St. Albert", "Woodcroft"]);
+    paramChoices.setChoiceByValue(["Wind Direction"]);
+
 
     async function fetchAndPlot() {
       const selectedStations = Array.from(stationDropdown.selectedOptions).map(opt => opt.value);
