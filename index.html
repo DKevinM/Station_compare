@@ -143,7 +143,13 @@
         xaxis: { title: "Time", type: "date" },
         yaxis: { title: "Value" },
         margin: { t: 50 },
-        hovermode: "x unified"
+        hovermode: "x unified",
+        legend: {
+          orientation: "h",  // horizontal layout
+          yanchor: "bottom",
+          y: -0.3,            // move legend below plot
+          xanchor: "center",
+          x: 0.5
       });
     }
 
