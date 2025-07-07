@@ -75,9 +75,9 @@
     });
     
     // Attach slider change to updatePlot
-    slider.noUiSlider.on("change", async () => {
-      await fetchAndPlot(); // Replace with your main update function
-    });
+    slider.noUiSlider.on("change", fetchAndPlot);
+    
+    setTimeout(fetchAndPlot, 100);
 
 
     const { data: stationData, error: stationErr } = await supabase
