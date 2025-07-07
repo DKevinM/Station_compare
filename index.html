@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Station + Parameter Viewer</title>
   <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
   <style>
     select { width: 300px; margin-bottom: 10px; }
     body { font-family: Arial, sans-serif; padding: 20px; }
@@ -19,22 +20,16 @@
   <select id="parameterDropdown" multiple></select>
 
   <h3>Select Date Range</h3>
-  <label>Start Date: <input type="date" id="startDate"></label>
-  <label>End Date: <input type="date" id="endDate"></label>
-
+  <label>Start Date: <input type="date" id="startDate" /></label>
+  <label>End Date: <input type="date" id="endDate" /></label>
 
   <div id="plot" style="width: 100%; height: 600px; margin-top: 20px;"></div>
 
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-    const SUPABASE_URL= 'https://zcunoncbyitfsilrhymv.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjdW5vbmNieWl0ZnNpbHJoeW12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3Mjk3NDYsImV4cCI6MjA2NzMwNTc0Nn0._z_tqm_5UIBkWfMa7HAJrUOA-0t9vOaBVV48-74esWQ';
+    const SUPABASE_URL = 'https://zcunoncbyitfsilrhymv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // your anon key here
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    let recentData = [];
-    let dataByStation = {};
-    let startDateStr, endDateStr;
-    
+
     const unitsLookup = {
       "AQHI": " ", "Ozone": "ppb", "Total Oxides of Nitrogen": "ppb",
       "Hydrogen Sulphide": "ppb", "Total Reduced Sulphur": "ppb", "Sulphur Dioxide": "ppb",
@@ -53,172 +48,85 @@
       "Nitrogen Dioxide": "NO2", "Methane": "CH4"
     };
 
+    const stations = ["Edmonton East", "St. Albert", "Woodcroft"];
+    const parameters = Object.keys(unitsLookup);
 
+    const stationDropdown = document.getElementById("stationDropdown");
+    const parameterDropdown = document.getElementById("parameterDropdown");
 
-  (async () => {
-    const { data: oldest, error: oldestErr } = await supabase
-      .from('aqhi_data')
-      .select('ReadingDate')
-      .order('ReadingDate', { ascending: false })
-      .limit(1);
-    
-    if (!oldest || oldest.length === 0) {
-      console.error("No data found!");
-    } else {
-      const end = new Date(); 
-      const start = new Date(end);
-      start.setDate(end.getDate() - 1);
-    
-      const startDateStr = start.toISOString();
-      const endDateStr = end.toISOString();
-     
-      const { data, error } = await supabase
-        .from('aqhi_data')
-        .select('*')
-        .gte('ReadingDate', startDateStr)
-        .lte('ReadingDate', endDateStr)
-        .order('ReadingDate', { ascending: true })
-        .range(0, 9999);
+    stations.forEach(station => {
+      const opt = document.createElement("option");
+      opt.value = station;
+      opt.textContent = station;
+      stationDropdown.appendChild(opt);
+    });
 
-      if (!data || data.length === 0) {
-        console.warn("No data returned for given range.");
-        return; 
-      }
-      
-      window.__aqhi_data = data;
-    
-      console.log("Supabase query result:", data);
-      if (error) {
-        console.error("Error fetching data from Supabase:", error.message, error);
-        console.log("Using date range:", startDateStr, "to", endDateStr);
-      }
+    parameters.forEach(param => {
+      const opt = document.createElement("option");
+      opt.value = param;
+      opt.textContent = param;
+      parameterDropdown.appendChild(opt);
+    });
 
+    const stationChoices = new Choices(stationDropdown, { removeItemButton: true });
+    const paramChoices = new Choices(parameterDropdown, { removeItemButton: true });
 
-      data.forEach(e => {
-        e.ParameterName = e.ParameterName || "AQHI";
-        e.Units = unitsLookup[e.ParameterName] || "";
-        e.Shortform = shortLookup[e.ParameterName] || "";
+    document.getElementById("startDate").valueAsDate = new Date(new Date().setDate(new Date().getDate() - 7));
+    document.getElementById("endDate").valueAsDate = new Date();
 
-        let v = parseFloat(e.Value);
-        if (isNaN(v)) return;
-        e.Value = v;
+    stationChoices.setChoiceByValue(["Edmonton East"]);
+    paramChoices.setChoiceByValue(["Ozone"]);
 
-        
-        const rawUTC = new Date(e.ReadingDate);
-        if (isNaN(rawUTC)) return;
-        e.RawDate = rawUTC;
-           
-        e.DisplayDate = rawUTC.toLocaleString("en-CA", {
-          timeZone: "America/Edmonton",
-          year: "numeric", month: "2-digit", day: "2-digit",
-          hour: "2-digit", minute: "2-digit", second: "2-digit",
-          hour12: false
-        });
+    async function fetchAndPlot() {
+      const selectedStations = Array.from(stationDropdown.selectedOptions).map(opt => opt.value);
+      const selectedParams = Array.from(parameterDropdown.selectedOptions).map(opt => opt.value);
+      const start = new Date(document.getElementById("startDate").value).toISOString();
+      const end = new Date(document.getElementById("endDate").value).toISOString();
 
-        console.log(`[${e.StationName}] [${e.ParameterName}] ${e.ReadingDate}}`);
+      const traces = [];
 
-        e.ReadingDate = rawUTC.toISOString();
+      for (const station of selectedStations) {
+        for (const param of selectedParams) {
+          const { data, error } = await supabase
+            .from('aqhi_data')
+            .select('*')
+            .eq('StationName', station)
+            .eq('ParameterName', param)
+            .gte('ReadingDate', start)
+            .lte('ReadingDate', end)
+            .order('ReadingDate', { ascending: true });
 
-        if (!dataByStation[e.StationName]) dataByStation[e.StationName] = {};
-        if (!dataByStation[e.StationName][e.ParameterName]) dataByStation[e.StationName][e.ParameterName] = [];
+          if (error || !data || data.length === 0) {
+            console.warn(`No data for ${station} / ${param}`);
+            continue;
+          }
 
-        console.log("StationName:", e.StationName);
-
-        dataByStation[e.StationName][e.ParameterName].push(e);
-        recentData.push(e);
-      });
-
-        initDropdownsAndPlot();
-    }
-    })();
-
-    function initDropdownsAndPlot() {
-      document.getElementById("startDate").value = startDateStr;
-      document.getElementById("endDate").value = endDateStr;
-      
-      const stations = Object.keys(dataByStation).sort();
-      const parameters = [...new Set(recentData.map(e => e.ParameterName))].sort();
-
-      const stationDropdown = document.getElementById("stationDropdown");
-      const parameterDropdown = document.getElementById("parameterDropdown");
-
-      stations.forEach(station => {
-        const opt = document.createElement("option");
-        opt.value = station;
-        opt.textContent = station;
-        stationDropdown.appendChild(opt);
-      });
-
-      parameters.forEach(param => {
-        const opt = document.createElement("option");
-        opt.value = param;
-        opt.textContent = param;
-        parameterDropdown.appendChild(opt);
-      });
-
-      const stationChoices = new Choices(stationDropdown, { removeItemButton: true });
-      const paramChoices = new Choices(parameterDropdown, { removeItemButton: true });
-
-      stationChoices.setChoiceByValue(["Edmonton East"]);
-      paramChoices.setChoiceByValue(["Wind Direction"]);
-
-      plotFiltered(["Edmonton East"], ["Wind Direction"]);
-
-      stationDropdown.addEventListener("change", updatePlot);
-      parameterDropdown.addEventListener("change", updatePlot);
-      document.getElementById("startDate").addEventListener("change", updatePlot);
-      document.getElementById("endDate").addEventListener("change", updatePlot);
-    }
-
-    function updatePlot() {
-      const selectedStations = Array.from(document.getElementById("stationDropdown").selectedOptions).map(opt => opt.value);
-      const selectedParams = Array.from(document.getElementById("parameterDropdown").selectedOptions).map(opt => opt.value);
-      const startDate = new Date(startDateInput);
-      const endDate = new Date(endDateInput);
-      if (isNaN(startDate) || isNaN(endDate)) {
-        console.error("Invalid start or end date.");
-        return;
-      }
-      plotFiltered(selectedStations, selectedParams, startDate, endDate);
-      console.log("Start:", startDate.toISOString(), "End:", endDate.toISOString());
-    }
-
-  function plotFiltered(stationList, paramList, startDate, endDate) {
-    const traces = [];
-    console.log("Filtering with", stationList, paramList);
-  
-    stationList.forEach(station => {
-      const stationData = dataByStation[station] || {};
-      paramList.forEach(param => {
-        const paramData = stationData[param] || [];
-  
-        console.log("Param:", param, "Station:", station, "Data count:", paramData.length);
-  
-        const filtered = paramData.filter(e => e.RawDate >= startDate && e.RawDate <= endDate);
-  
-        console.log("Filtered count:", filtered.length);
-  
-        if (filtered.length > 0) {
           traces.push({
-            x: filtered.map(e => e.RawDate),
-            y: filtered.map(e => e.Value),
+            x: data.map(d => new Date(d.ReadingDate)),
+            y: data.map(d => parseFloat(d.Value)),
             mode: 'lines+markers',
             name: `${shortLookup[param] || param} (${station})`,
-            text: filtered.map(e => `${e.StationName}: ${e.Value} ${e.Units} @ ${e.DisplayDate}`),
+            text: data.map(d => `${station}: ${d.Value} ${unitsLookup[param] || ""} @ ${d.ReadingDate}`),
             hoverinfo: 'x+y+text'
           });
         }
+      }
+
+      Plotly.newPlot("plot", traces, {
+        title: "Parameter Time Series",
+        xaxis: { title: "Time", type: "date" },
+        yaxis: { title: "Value" },
+        margin: { t: 50 },
+        hovermode: "x unified"
       });
-    });
-  
-    Plotly.newPlot("plot", traces, {
-      title: "Parameter Time Series",
-      xaxis: { title: "Time", type: "date" },
-      yaxis: { title: "Value" },
-      margin: { t: 50 },
-      hovermode: "x unified"
-    });
-  }
+    }
+
+    stationDropdown.addEventListener("change", fetchAndPlot);
+    parameterDropdown.addEventListener("change", fetchAndPlot);
+    document.getElementById("startDate").addEventListener("change", fetchAndPlot);
+    document.getElementById("endDate").addEventListener("change", fetchAndPlot);
+
+    fetchAndPlot(); // Initial plot
   </script>
 </body>
 </html>
