@@ -56,6 +56,7 @@
     
     const slider = document.getElementById("timeSlider");
     
+    // After slider is created and configured
     noUiSlider.create(slider, {
       start: [sevenDaysAgo.getTime(), now.getTime()],
       connect: true,
@@ -73,6 +74,13 @@
         from: value => Date.parse(value)
       }
     });
+    
+    // ✅ Add this below the slider init:
+    slider.noUiSlider.on("change", fetchAndPlot);
+    
+    // ✅ Delay initial fetch so slider is ready
+    setTimeout(fetchAndPlot, 200);  // ~200ms ensures the slider is ready
+
     
     // Attach slider change to updatePlot
     slider.noUiSlider.on("change", fetchAndPlot);
