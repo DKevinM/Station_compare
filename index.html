@@ -48,6 +48,9 @@
       "Nitrogen Dioxide": "NO2", "Methane": "CH4"
     };
 
+    const stationChoices = new Choices(stationDropdown, { removeItemButton: true });
+    const paramChoices = new Choices(parameterDropdown, { removeItemButton: true });
+    
     stationChoices.setChoiceByValue(["Edmonton East", "St. Albert", "Woodcroft", "Edmonton Lendrum", "Edmonton McCauley"]);
     paramChoices.setChoiceByValue(["Wind Direction"]);
 
@@ -70,10 +73,6 @@
       .limit(1000);
     
     const parameters = [...new Set(paramData.map(d => d.ParameterName))].sort();
-
-
-    const stationChoices = new Choices(stationDropdown, { removeItemButton: true });
-    const paramChoices = new Choices(parameterDropdown, { removeItemButton: true });
 
     document.getElementById("startDate").valueAsDate = new Date(new Date().setDate(new Date().getDate() - 7));
     document.getElementById("endDate").valueAsDate = new Date();
