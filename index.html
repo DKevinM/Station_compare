@@ -93,7 +93,7 @@
     document.getElementById("endDate").valueAsDate = new Date();
 
     stationChoices.setChoiceByValue(["Edmonton East", "St. Albert", "Woodcroft", "Edmonton Lendrum", "Edmonton McCauley", "Enoch", "O’Morrow Station 1", "Poacher’s Landing Station 2"]);
-    paramChoices.setChoiceByValue(["Wind Direction"]);
+    paramChoices.setChoiceByValue(["Nitrogen Dioxide", "Fine Particulate Matter"]);
 
     async function fetchAndPlot() {
       const selectedStations = Array.from(stationDropdown.selectedOptions).map(opt => opt.value);
