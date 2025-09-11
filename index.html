@@ -2,32 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Station + Parameter Viewer</title>
+  <title>Station + Parameter Viewer — RAW/UNCORRECTED</title>
   <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
   <style>
-    select { width: 300px; margin-bottom: 10px; }
     body { font-family: Arial, sans-serif; padding: 20px; }
-  </style>
-  <style>
     select { width: 300px; margin-bottom: 10px; }
-    body { font-family: Arial, sans-serif; padding: 20px; }
     .notice {
-      background: #fff3cd;            /* soft yellow */
-      border: 1px solid #f9d9a7;
-      color: #5c3d00;
-      padding: 10px 14px;
-      border-radius: 8px;
-      margin: 0 0 16px 0;
-      font-weight: 600;
+      background: #fff3cd; border: 1px solid #f9d9a7; color: #5c3d00;
+      padding: 10px 14px; border-radius: 8px; margin: 0 0 16px 0; font-weight: 600;
     }
   </style>
 </head>
 <body>
-  <body>
-  <div class="notice">RAW DATA — UNCORRECTED (for review only)</div>
+  <div class="notice">RAW DATA — unverified for review only</div>
 
   <h3>Select Stations</h3>
   <select id="stationDropdown" multiple></select>
@@ -64,123 +54,147 @@
       "Nitrogen Dioxide": "NO2", "Methane": "CH4"
     };
 
-    
+    // 1) load station & parameter lists
     const { data: stationData, error: stationErr } = await supabase
       .from("aqhi_data")
       .select("StationName")
       .neq("StationName", "")
       .limit(5000);
-    
-    const stations = [...new Set(stationData.map(d => d.StationName))].sort();
-    
+    if (stationErr) console.error(stationErr);
+
+    const stations = [...new Set((stationData || []).map(d => d.StationName))].sort();
+
     const { data: paramData, error: paramErr } = await supabase
       .from("aqhi_data")
       .select("ParameterName")
       .neq("ParameterName", "")
       .limit(5000);
-    
-    const parameters = [...new Set(paramData.map(d => d.ParameterName))].sort();
+    if (paramErr) console.error(paramErr);
 
+    const parameters = [...new Set((paramData || []).map(d => d.ParameterName))].sort();
 
+    // 2) populate dropdowns
     const stationDropdown = document.getElementById("stationDropdown");
     const parameterDropdown = document.getElementById("parameterDropdown");
 
     stations.forEach(station => {
       const opt = document.createElement("option");
-      opt.value = station;
-      opt.textContent = station;
+      opt.value = station; opt.textContent = station;
       stationDropdown.appendChild(opt);
     });
-    
+
     parameters.forEach(param => {
       const opt = document.createElement("option");
-      opt.value = param;
-      opt.textContent = param;
+      opt.value = param; opt.textContent = param;
       parameterDropdown.appendChild(opt);
     });
 
-
-    
-    // 3. Initialize Choices
+    // 3) Choices init
     const stationChoices = new Choices(stationDropdown, { removeItemButton: true });
     const paramChoices = new Choices(parameterDropdown, { removeItemButton: true });
 
-    document.getElementById("startDate").valueAsDate = new Date(new Date().setDate(new Date().getDate() - 7));
-    document.getElementById("endDate").valueAsDate = new Date();
+    // default last 7 days
+    const startEl = document.getElementById("startDate");
+    const endEl = document.getElementById("endDate");
+    startEl.valueAsDate = new Date(new Date().setDate(new Date().getDate() - 7));
+    endEl.valueAsDate = new Date();
 
+    // preselects
     stationChoices.setChoiceByValue(["Edmonton East", "St. Albert", "Woodcroft", "Edmonton Lendrum", "Edmonton McCauley", "Enoch", "O’Morrow Station 1", "Poacher’s Landing Station 2"]);
     paramChoices.setChoiceByValue(["Fine Particulate Matter"]);
 
+    // 4) fetch + plot
     async function fetchAndPlot() {
-      const selectedStations = Array.from(stationDropdown.selectedOptions).map(opt => opt.value);
-      const selectedParams = Array.from(parameterDropdown.selectedOptions).map(opt => opt.value);
-      const start = new Date(document.getElementById("startDate").value).toISOString();
-      const end = new Date(document.getElementById("endDate").value).toISOString();
+      try {
+        const selectedStations = Array.from(stationDropdown.selectedOptions).map(opt => opt.value);
+        const selectedParams   = Array.from(parameterDropdown.selectedOptions).map(opt => opt.value);
 
-      const traces = [];
+        // inclusive end date: make endExclusive = end + 1 day, then use .lt(endExclusive)
+        const start = new Date(startEl.value); // local midnight
+        const endExclusive = new Date(endEl.value);
+        endExclusive.setDate(endExclusive.getDate() + 1);
 
-      for (const station of selectedStations) {
-        for (const param of selectedParams) {
-          const { data, error } = await supabase
-            .from('aqhi_data')
-            .select('*')
-            .eq('StationName', station)
-            .eq('ParameterName', param)
-            .gte('ReadingDate', start)
-            .lte('ReadingDate', end)
-            .order('ReadingDate', { ascending: true });
+        const startISO = start.toISOString();
+        const endISO   = endExclusive.toISOString();
 
-          if (error || !data || data.length === 0) {
-            console.warn(`No data for ${station} / ${param}`);
-            continue;
+        const traces = [];
+
+        for (const station of selectedStations) {
+          for (const param of selectedParams) {
+            const { data, error } = await supabase
+              .from('aqhi_data')
+              .select('StationName,ParameterName,ReadingDate,Value')
+              .eq('StationName', station)
+              .eq('ParameterName', param)
+              .gte('ReadingDate', startISO)
+              .lt('ReadingDate', endISO)     // end-exclusive for full-day coverage
+              .order('ReadingDate', { ascending: true });
+
+            if (error) {
+              console.error(`Query error for ${station}/${param}:`, error);
+              continue;
+            }
+            if (!data || data.length === 0) {
+              console.warn(`No data for ${station} / ${param}`);
+              continue;
+            }
+
+            traces.push({
+              x: data.map(d => new Date(d.ReadingDate)),
+              y: data.map(d => Number(d.Value)),
+              mode: 'lines+markers',
+              name: `${shortLookup[param] || param} (${station})`,
+              text: data.map(d => {
+                const local = new Date(d.ReadingDate).toLocaleString("en-CA", {
+                  timeZone: "America/Edmonton",
+                  year: "numeric", month: "2-digit", day: "2-digit",
+                  hour: "2-digit", minute: "2-digit", second: "2-digit",
+                  hour12: false
+                });
+                return `${station}: ${d.Value} ${unitsLookup[param] || ""} @ ${local}`;
+              }),
+              hoverinfo: 'x+y+text'
+            });
           }
-
-          traces.push({
-            x: data.map(d => new Date(d.ReadingDate)),
-            y: data.map(d => parseFloat(d.Value)),
-            mode: 'lines+markers',
-            name: `${shortLookup[param] || param} (${station})`,
-            text: data.map(d => {
-              const local = new Date(d.ReadingDate).toLocaleString("en-CA", {
-                timeZone: "America/Edmonton",
-                year: "numeric", month: "2-digit", day: "2-digit",
-                hour: "2-digit", minute: "2-digit", second: "2-digit",
-                hour12: false
-              });
-              return `${station}: ${d.Value} ${unitsLookup[param] || ""} @ ${local}`;
-            }),
-            hoverinfo: 'x+y+text'
-          });
         }
+
+        Plotly.newPlot("plot", traces, {
+          title: "Parameter Time Series",
+          xaxis: { title: "Time", type: "date" },
+          yaxis: { title: "Value" },
+          margin: { t: 80 },
+          hovermode: "x unified",
+          legend: {
+            orientation: "h",
+            yanchor: "bottom",
+            y: -0.3,
+            xanchor: "center",
+            x: 0.5
+          }, // <-- comma!
+          annotations: [
+            {
+              text: "RAW DATA — UNCORRECTED (for review only)",
+              xref: "paper",
+              yref: "paper",
+              x: 0,
+              y: 1.18,
+              showarrow: false,
+              font: { size: 14, color: "#b00020" },
+              align: "left"
+            }
+          ]
+        });
+      } catch (e) {
+        console.error("fetchAndPlot failed:", e);
       }
-
-      Plotly.newPlot("plot", traces, {
-        title: "Parameter Time Series",
-        xaxis: { title: "Time", type: "date" },
-        yaxis: { title: "Value" },
-        margin: { t: 50 },
-        hovermode: "x unified",
-        legend: {
-          orientation: "h",  // horizontal layout
-          yanchor: "bottom",
-          y: -0.3,            // move legend below plot
-          xanchor: "center",
-          x: 0.5
-        }
-          annotations: [{
-            text: "RAW DATA — not verified, use only for review",
-            xref: "paper", yref: "paper",
-            x: 0, y: 1.12, showarrow: false,
-            font: { size: 14, color: "#b00020" }]
-      });
     }
 
     stationDropdown.addEventListener("change", fetchAndPlot);
     parameterDropdown.addEventListener("change", fetchAndPlot);
-    document.getElementById("startDate").addEventListener("change", fetchAndPlot);
-    document.getElementById("endDate").addEventListener("change", fetchAndPlot);
+    startEl.addEventListener("change", fetchAndPlot);
+    endEl.addEventListener("change", fetchAndPlot);
 
-    fetchAndPlot(); // Initial plot
+    fetchAndPlot();
   </script>
 </body>
 </html>
