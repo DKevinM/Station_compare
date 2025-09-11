@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Station + Parameter Viewer — RAW/UNCORRECTED</title>
+  <title>ACA Station + Parameter Viewer — RAW DATA (Level 0)</title>
   <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
@@ -17,7 +17,7 @@
   </style>
 </head>
 <body>
-  <div class="notice">RAW DATA — unverified for review only</div>
+  <div class="notice">ACA DATA — Raw Data (Level 0) for review only</div>
 
   <h3>Select Stations</h3>
   <select id="stationDropdown" multiple></select>
@@ -173,7 +173,7 @@
           }, // <-- comma!
           annotations: [
             {
-              text: "RAW DATA — UNCORRECTED (for review only)",
+              text: "ACA DATA — for review only",
               xref: "paper",
               yref: "paper",
               x: 0,
