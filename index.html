@@ -11,8 +11,24 @@
     select { width: 300px; margin-bottom: 10px; }
     body { font-family: Arial, sans-serif; padding: 20px; }
   </style>
+  <style>
+    select { width: 300px; margin-bottom: 10px; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .notice {
+      background: #fff3cd;            /* soft yellow */
+      border: 1px solid #f9d9a7;
+      color: #5c3d00;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin: 0 0 16px 0;
+      font-weight: 600;
+    }
+  </style>
 </head>
 <body>
+  <body>
+  <div class="notice">RAW DATA — UNCORRECTED (for review only)</div>
+
   <h3>Select Stations</h3>
   <select id="stationDropdown" multiple></select>
 
@@ -93,7 +109,7 @@
     document.getElementById("endDate").valueAsDate = new Date();
 
     stationChoices.setChoiceByValue(["Edmonton East", "St. Albert", "Woodcroft", "Edmonton Lendrum", "Edmonton McCauley", "Enoch", "O’Morrow Station 1", "Poacher’s Landing Station 2"]);
-    paramChoices.setChoiceByValue(["Nitrogen Dioxide", "Fine Particulate Matter"]);
+    paramChoices.setChoiceByValue(["Fine Particulate Matter"]);
 
     async function fetchAndPlot() {
       const selectedStations = Array.from(stationDropdown.selectedOptions).map(opt => opt.value);
@@ -151,6 +167,12 @@
           xanchor: "center",
           x: 0.5
         }
+          annotations: [{
+            text: "RAW DATA — UNCORRECTED (for review only)",
+            xref: "paper", yref: "paper",
+            x: 0, y: 1.12, showarrow: false,
+            font: { size: 14, color: "#b00020" }
+          }]
       });
     }
 
