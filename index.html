@@ -59,7 +59,7 @@
       .from("aqhi_data")
       .select("StationName")
       .neq("StationName", "")
-      .limit(5000);
+      .limit(10000);
     if (stationErr) console.error(stationErr);
 
     const stations = [...new Set((stationData || []).map(d => d.StationName))].sort();
@@ -68,7 +68,7 @@
       .from("aqhi_data")
       .select("ParameterName")
       .neq("ParameterName", "")
-      .limit(5000);
+      .limit(10000);
     if (paramErr) console.error(paramErr);
 
     const parameters = [...new Set((paramData || []).map(d => d.ParameterName))].sort();
